@@ -5,6 +5,8 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -29,9 +31,8 @@ import com.google.android.gms.tasks.Task
 class MainActivity : ComponentActivity() {
 
     private lateinit var googleSignInClient: GoogleSignInClient
-    private val RC_SIGN_IN = 9001
     private val userViewModel: UserViewModel by viewModels()
-
+    private lateinit var signInLauncher: ActivityResultLauncher<Intent>
 
     @OptIn(ExperimentalTvMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,6 +46,13 @@ class MainActivity : ComponentActivity() {
         val account = GoogleSignIn.getLastSignedInAccount(this)
         if (account != null) {
             userViewModel.setUser(account)
+        }
+
+        signInLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                handleSignInResult(task)
+            }
         }
 
         setContent {
@@ -74,7 +82,7 @@ class MainActivity : ComponentActivity() {
 
                 Button(onClick = {
                     val signInIntent = googleSignInClient.signInIntent
-                    this@MainActivity.startActivityForResult(signInIntent, RC_SIGN_IN)
+                    signInLauncher.launch(signInIntent)
                 }) {
                     Text("Sign in with Google")
                 }
@@ -91,15 +99,6 @@ class MainActivity : ComponentActivity() {
                     Text("SignOut")
                 }
             }
-        }
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-
-        if (requestCode == RC_SIGN_IN) {
-            val task = GoogleSignIn.getSignedInAccountFromIntent(data)
-            handleSignInResult(task)
         }
     }
 
